@@ -287,6 +287,15 @@ apply_all_in_dir() {
     echo "WINE: -PENDING- add OpenXR patches"
     apply_patch "../patches/wine-hotfixes/pending/0001-decouple-wineopenxr-from-steamvr-and-integrate-it-in.patch"
 
+    echo "WINE: -PENDING- Unity memory leak fix 1/3"
+    apply_patch "../patches/wine-hotfixes/pending/0001-ntdll-Make-instrumentation-return-path-idempotent.patch"
+
+    echo "WINE: -PENDING- Unity memory leak fix 2/3"
+    apply_patch "../patches/wine-hotfixes/pending/0002-ntdll-Fix-thread-stops-inside-__wine_syscall_dispatc.patch"
+
+    echo "WINE: -PENDING- Unity memory leak fix 3/3"
+    apply_patch "../patches/wine-hotfixes/pending/0003-ntdll-Block-SIGUSR1-when-the-thread-context-is-being.patch"
+
 
 ### END WINE PENDING UPSTREAM SECTION ###
 

@@ -1,0 +1,102 @@
+From b96791c77312723ce0bcf398fe8840d18e7fa563 Mon Sep 17 00:00:00 2001
+From: Hoshino Lina <lina@lina.yt>
+Date: Mon, 23 Mar 2026 16:42:51 +0900
+Subject: [PATCH 3/3] ntdll: Block SIGUSR1 when the thread context is being
+ modified
+
+This fixes a race between threads calling
+NtSetContextThread()/NtGetContextThread() on themselves and
+SIGUSR1 arriving from the server.
+---
+ dlls/ntdll/unix/signal_x86_64.c | 25 ++++++++++++++++++++++++-
+ 1 file changed, 24 insertions(+), 1 deletion(-)
+
+diff --git a/dlls/ntdll/unix/signal_x86_64.c b/dlls/ntdll/unix/signal_x86_64.c
+index 5a4b42e0404f..94d65484bdef 100644
+--- a/dlls/ntdll/unix/signal_x86_64.c
++++ b/dlls/ntdll/unix/signal_x86_64.c
+@@ -1023,6 +1023,21 @@ void *get_wow_context( CONTEXT *context )
+     return get_cpu_area( IMAGE_FILE_MACHINE_I386 );
+ }
+ 
++void deferred_sigusr1(void);
++
++static inline void block_sigusr1(void)
++{
++    amd64_thread_data()->sigusr1_blocked++;
++}
++
++static inline void unblock_sigusr1(void)
++{
++    if (!--(amd64_thread_data()->sigusr1_blocked) &&
++        amd64_thread_data()->sigusr1_pending)
++    {
++        deferred_sigusr1();
++    }
++}
+ 
+ /***********************************************************************
+  *              NtSetContextThread  (NTDLL.@)
+@@ -1050,6 +1065,7 @@ NTSTATUS WINAPI NtSetContextThread( HANDLE handle, const CONTEXT *context )
+     else flags &= ~CONTEXT_XSTATE;
+ 
+     /* debug registers require a server call */
++    block_sigusr1();
+     if (self && (flags & CONTEXT_DEBUG_REGISTERS))
+         self = (amd64_thread_data()->dr0 == context->Dr0 &&
+                 amd64_thread_data()->dr1 == context->Dr1 &&
+@@ -1057,6 +1073,7 @@ NTSTATUS WINAPI NtSetContextThread( HANDLE handle, const CONTEXT *context )
+                 amd64_thread_data()->dr3 == context->Dr3 &&
+                 amd64_thread_data()->dr6 == context->Dr6 &&
+                 amd64_thread_data()->dr7 == context->Dr7);
++    unblock_sigusr1();
+ 
+     if (!self)
+     {
+@@ -1077,6 +1094,7 @@ NTSTATUS WINAPI NtSetContextThread( HANDLE handle, const CONTEXT *context )
+         }
+     }
+ 
++    block_sigusr1();
+     if (flags & CONTEXT_INTEGER)
+     {
+         frame->rax = context->Rax;
+@@ -1122,6 +1140,7 @@ NTSTATUS WINAPI NtSetContextThread( HANDLE handle, const CONTEXT *context )
+     }
+ 
+     frame->restore_flags |= flags & ~CONTEXT_INTEGER;
++    unblock_sigusr1();
+     return STATUS_SUCCESS;
+ }
+ 
+@@ -1152,6 +1171,7 @@ NTSTATUS WINAPI NtGetContextThread( HANDLE handle, CONTEXT *context )
+         if (ret || !self) return ret;
+     }
+ 
++    block_sigusr1();
+     if (needed_flags & CONTEXT_INTEGER)
+     {
+         context->Rax = frame->rax;
+@@ -1236,8 +1256,10 @@ NTSTATUS WINAPI NtGetContextThread( HANDLE handle, CONTEXT *context )
+         memset( xstate->Reserved2, 0, sizeof(xstate->Reserved2) );
+         if (xstate->Mask)
+         {
+-            if (context_ex->XState.Length < xstate_get_size( xstate->CompactionMask, xstate->Mask ))
++            if (context_ex->XState.Length < xstate_get_size( xstate->CompactionMask, xstate->Mask )) {
++                unblock_sigusr1();
+                 return STATUS_BUFFER_OVERFLOW;
++            }
+             copy_xstate( xstate, &frame->xstate, xstate->Mask );
+             /* copy_xstate may use avx in memcpy, restore xstate not to break the tests. */
+             frame->restore_flags |= CONTEXT_XSTATE;
+@@ -1265,6 +1287,7 @@ NTSTATUS WINAPI NtGetContextThread( HANDLE handle, CONTEXT *context )
+             amd64_thread_data()->dr7 = context->Dr7;
+         }
+     }
++    unblock_sigusr1();
+     set_context_exception_reporting_flags( &context->ContextFlags, CONTEXT_SERVICE_ACTIVE );
+     return STATUS_SUCCESS;
+ }
+-- 
+2.53.0
+
