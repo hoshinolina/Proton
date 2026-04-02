@@ -372,20 +372,16 @@ index c2586dc8a8b3..5a4b42e0404f 100644
  /***********************************************************************
   *           __wine_unix_call_dispatcher
   */
-@@ -3552,6 +3658,15 @@ asm( ".data\n\t"
-      ".globl " __ASM_NAME("__wine_unix_call_dispatcher_prolog_end_ptr") "\n"
-      __ASM_NAME("__wine_unix_call_dispatcher_prolog_end_ptr") ":\n\t"
-      ".quad " __ASM_LOCAL_LABEL("__wine_unix_call_dispatcher_prolog_end") "\n\t"
-+     ".globl " __ASM_NAME("__wine_syscall_dispatcher_save_end_ptr") "\n"
-+     __ASM_NAME("__wine_syscall_dispatcher_save_end_ptr") ":\n\t"
-+     ".quad " __ASM_LOCAL_LABEL("__wine_syscall_dispatcher_save_end") "\n\t"
-+     ".globl " __ASM_NAME("__wine_syscall_dispatcher_return_ptr") "\n"
-+     __ASM_NAME("__wine_syscall_dispatcher_return_ptr") ":\n\t"
-+     ".quad " __ASM_LOCAL_LABEL("__wine_syscall_dispatcher_return") "\n\t"
-+     ".globl " __ASM_NAME("__wine_syscall_dispatcher_return_end_ptr") "\n"
-+     __ASM_NAME("__wine_syscall_dispatcher_return_end_ptr") ":\n\t"
-+     ".quad " __ASM_LOCAL_LABEL("__wine_syscall_dispatcher_return_end") "\n\t"
-      ".text\n\t" );
+@@ -3782,5 +3782,11 @@
+                       __ASM_LOCAL_LABEL("__wine_syscall_dispatcher_prolog_end") )
+ __ASM_GLOBAL_POINTER( __ASM_NAME("__wine_unix_call_dispatcher_prolog_end_ptr"),
+                       __ASM_LOCAL_LABEL("__wine_unix_call_dispatcher_prolog_end") )
++__ASM_GLOBAL_POINTER( __ASM_NAME("__wine_syscall_dispatcher_save_end_ptr"),
++                      __ASM_LOCAL_LABEL("__wine_syscall_dispatcher_save_end") )
++__ASM_GLOBAL_POINTER( __ASM_NAME("__wine_syscall_dispatcher_return_ptr"),
++                      __ASM_LOCAL_LABEL("__wine_syscall_dispatcher_return") )
++__ASM_GLOBAL_POINTER( __ASM_NAME("__wine_syscall_dispatcher_return_end_ptr"),
++                      __ASM_LOCAL_LABEL("__wine_syscall_dispatcher_return_end") )
  
  #endif  /* __x86_64__ */
 -- 
